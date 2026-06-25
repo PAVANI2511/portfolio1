@@ -355,10 +355,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
     // ==========================================================================
-    // 8. DISPATCH FORM SIMULATION
+    // 8. DISPATCH FORM CONTROLLER (WEB3FORMS INTEGRATION)
     // ==========================================================================
     const contactForm = document.getElementById('contact-form');
     const formStatus = document.getElementById('form-status');
+
+    // GET YOUR FREE ACCESS KEY FROM https://web3forms.com AND PASTE IT HERE
+    const WEB3FORMS_ACCESS_KEY = "cce60f1c-ba15-4297-9234-357903fad558";
 
     if (contactForm) {
         contactForm.addEventListener('submit', (e) => {
@@ -369,21 +372,60 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const submitBtn = contactForm.querySelector('.btn-submit');
             submitBtn.disabled = true;
-            submitBtn.querySelector('span').textContent = 'DISPATCHING STATEMENT...';
+            const submitBtnText = submitBtn.querySelector('span');
+            const originalBtnText = submitBtnText.textContent;
+            submitBtnText.textContent = 'DISPATCHING STATEMENT...';
 
-            setTimeout(() => {
-                formStatus.textContent = 'Statement dispatched successfully! Pavani will contact you shortly.';
-                formStatus.className = 'form-status success';
-                
-                contactForm.reset();
+            const formData = new FormData(contactForm);
+            
+            // If the user hasn't set their key, warn them but run the simulation so it doesn't break
+            if (WEB3FORMS_ACCESS_KEY === "YOUR_ACCESS_KEY_HERE") {
+                console.warn("Web3Forms Access Key is not configured. Falling back to simulation mode.");
+                setTimeout(() => {
+                    formStatus.textContent = 'Demo Mode: Message processed. (Configure your Web3Forms Access Key in script.js to receive real emails!)';
+                    formStatus.className = 'form-status success';
+                    contactForm.reset();
+                    submitBtn.disabled = false;
+                    submitBtnText.textContent = originalBtnText;
+                    setTimeout(() => {
+                        formStatus.textContent = '';
+                        formStatus.className = 'form-status';
+                    }, 8000);
+                }, 1200);
+                return;
+            }
+
+            formData.append('access_key', WEB3FORMS_ACCESS_KEY);
+
+            fetch('https://api.web3forms.com/submit', {
+                method: 'POST',
+                body: formData
+            })
+            .then(async (response) => {
+                let json = await response.json();
+                if (response.status == 200) {
+                    formStatus.textContent = 'Statement dispatched successfully! Pavani will contact you shortly.';
+                    formStatus.className = 'form-status success';
+                    contactForm.reset();
+                } else {
+                    console.log(response);
+                    formStatus.textContent = json.message || 'Something went wrong. Please try again.';
+                    formStatus.className = 'form-status error';
+                }
+            })
+            .catch(error => {
+                console.log(error);
+                formStatus.textContent = 'Network error. Please check your connection and try again.';
+                formStatus.className = 'form-status error';
+            })
+            .then(() => {
                 submitBtn.disabled = false;
-                submitBtn.querySelector('span').textContent = 'DISPATCH STATEMENT';
-
+                submitBtnText.textContent = originalBtnText;
                 setTimeout(() => {
                     formStatus.textContent = '';
                     formStatus.className = 'form-status';
                 }, 5000);
-            }, 1500);
+            });
         });
     }
 
